@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+body {
+    width: 500px; /* Fixed width for the extension popup */
+    min-height: 200px;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    background-color: #f8fafc; /* light blue-gray */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
