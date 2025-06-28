@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Summarizer</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="tailwind.min.js"></script>
+    <style>
+        body {
+            width: 500px; /* Fixed width for the extension popup */
+            min-height: 200px;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            background-color: #f8fafc; /* light blue-gray */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+<body class="rounded-lg shadow-lg">
+<h1 class="text-xl font-bold text-gray-800 mb-4 text-center rounded-md p-2 bg-gradient-to-r from-blue-100 to-indigo-100">
+    News Summarizer
+</h1>
+
+<div class="flex flex-col items-center space-y-4">
+    <button id="summarizeButton"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 w-full">
+        Summarize Current Page
+    </button>
+
+    <div id="statusMessage" class="text-sm text-gray-600 mt-2 text-center"></div>
+
+    <div id="summaryOutput"
+         class="mt-4 p-4 bg-white border border-gray-200 rounded-lg shadow-inner overflow-y-auto max-h-64 text-gray-700 text-sm leading-relaxed w-full">
+        <!-- Summary will be displayed here -->
+        No summary generated yet. Click "Summarize Current Page" to get started.
+    </div>
+
+    <button id="copySummaryButton"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-4 rounded-lg shadow-sm transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 mt-2 hidden">
+        Copy Summary
+    </button>
+</div>
+
+<!-- Link to the popup's JavaScript file -->
+<script src="popup.js"></script>
+</body>
+</html>
