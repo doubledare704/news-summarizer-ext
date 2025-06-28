@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "News Summarizer",
-  "version": "1.0",
-  "description": "Quickly summarize news articles and webpages using Chrome's built-in AI.",
+  "version": "2.0",
+  "description": "Summarizes and translates web page articles.",
   "permissions": [
     "tabs",
     "activeTab",

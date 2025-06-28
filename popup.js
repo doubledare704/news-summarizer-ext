@@ -8,8 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryTypeSelect = document.getElementById('summaryType');
     const summaryLengthSelect = document.getElementById('summaryLength');
     const settingsDescription = document.getElementById('settingsDescription');
+    const translateButton = document.getElementById('translateButton');
+    const translationOutput = document.getElementById('translationOutput');
 
-    const settingDescriptions = { /* ... (keep this object as is) ... */ };
+    const settingDescriptions = { /* ... (keep this object as is) ... */};
 
     // --- Core UI Rendering ---
 
@@ -36,9 +38,27 @@ document.addEventListener('DOMContentLoaded', () => {
             summaryOutput.textContent = 'No summary generated yet. Click "Summarize" to begin.';
         }
 
+        // Update translation output
+        if (state.translatedText) {
+            translationOutput.textContent = state.translatedText;
+            translationOutput.classList.remove('hidden');
+            summaryOutput.classList.add('hidden');
+
+        } else {
+            translationOutput.classList.add('hidden');
+            summaryOutput.classList.remove('hidden');
+        }
+
         // Update button states
         setSummarizeButtonState(!state.isProcessing);
         copySummaryButton.classList.toggle('hidden', !state.summary || state.isProcessing);
+
+        // Show translate button if summary exists and we're not currently processing/translating
+        translateButton.classList.toggle('hidden',
+            !state.summary ||
+            state.isProcessing ||
+            state.isTranslating ||
+            state.isDetecting);
     }
 
     // --- Event Listeners ---
@@ -56,21 +76,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // This allows the popup to show live progress from the background script.
     chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local') {
-            chrome.storage.local.get(null, (result) => renderState(result));
+            chrome.storage.local.get(null, (result) => {
+                renderState(result);
+
+                // Check if language detection just completed
+                if (changes.detectedLanguage && !changes.isDetecting?.newValue && !result.isError) {
+                    // If we have a summary and a detected language, start translation
+                    if (result.summary && result.detectedLanguage) {
+                        statusMessage.textContent = `Translating to ${result.detectedLanguage}...`;
+
+                        // Send message to background to translate
+                        chrome.runtime.sendMessage({
+                            action: 'translate',
+                            text: result.summary,
+                            targetLanguage: result.detectedLanguage
+                        });
+                    }
+                }
+
+                // Re-enable translate button when translation is done
+                if (changes.isTranslating && changes.isTranslating.oldValue && !changes.isTranslating.newValue) {
+                    translateButton.disabled = false;
+                    translateButton.classList.remove('opacity-50');
+                }
+            });
         }
     });
 
     // The Summarize button now sends a message to the background script.
     summarizeButton.addEventListener('click', async () => {
         setSummarizeButtonState(false);
+
+        translationOutput.classList.add('hidden');
+        summaryOutput.classList.remove('hidden');
         statusMessage.textContent = 'Getting page content...';
 
         try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
             if (!tab || !tab.id) throw new Error('Could not get active tab information.');
 
-            await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-            const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageText' });
+            await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['content.js']});
+            const response = await chrome.tabs.sendMessage(tab.id, {action: 'getPageText'});
             const pageText = response ? response.text : '';
 
             if (!pageText || pageText.trim().length < 100) {
@@ -101,11 +147,58 @@ document.addEventListener('DOMContentLoaded', () => {
     copySummaryButton.addEventListener('click', () => {
         navigator.clipboard.writeText(summaryOutput.textContent).then(() => {
             statusMessage.textContent = 'Summary copied to clipboard!';
-            setTimeout(() => { statusMessage.textContent = ''; }, 2000);
+            setTimeout(() => {
+                statusMessage.textContent = '';
+            }, 2000);
         }).catch(err => {
             console.error('Failed to copy text: ', err);
             statusMessage.textContent = 'Failed to copy summary.';
         });
+    });
+
+    // Handle translate button click
+    translateButton.addEventListener('click', async () => {
+        try {
+            // Get active tab to detect page language
+            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            if (!tab || !tab.id) throw new Error('Could not get active tab information.');
+
+            // Get the current summary from storage
+            const state = await chrome.storage.local.get(['summary']);
+            if (!state.summary) {
+                statusMessage.textContent = 'No summary available to translate.';
+                return;
+            }
+
+            // First, detect the language of the page content
+            statusMessage.textContent = 'Detecting page language...';
+            translateButton.disabled = true;
+            translateButton.classList.add('opacity-50');
+
+            // Get the page text for language detection
+            await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['content.js']});
+            const response = await chrome.tabs.sendMessage(tab.id, {action: 'getPageText'});
+            const pageText = response ? response.text : '';
+
+            if (!pageText) {
+                throw new Error('Could not get page content for language detection.');
+            }
+
+            // Send message to background to detect language
+            chrome.runtime.sendMessage({
+                action: 'detectLanguage',
+                text: pageText
+            });
+
+            // Wait for language detection to complete
+            // This will be handled by the storage.onChanged listener
+            // which will then trigger the translation
+        } catch (error) {
+            console.error('Error in translation process:', error);
+            statusMessage.textContent = `Error: ${error.message}`;
+            translateButton.disabled = false;
+            translateButton.classList.remove('opacity-50');
+        }
     });
 
     // --- UI Helpers ---

@@ -13,14 +13,127 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         summarize(request.text, request.settings);
         // Immediately respond to the popup to confirm the task has been received.
         sendResponse({status: 'Processing started in the background.'});
+    } else if (request.action === 'translate') {
+        // Start the translation process
+        translateText(request.text, request.targetLanguage);
+        // Immediately respond to confirm task received
+        sendResponse({status: 'Translation started in the background.'});
+    } else if (request.action === 'detectLanguage') {
+        // Start the language detection process
+        detectLanguage(request.text);
+        // Immediately respond to confirm task received
+        sendResponse({status: 'Language detection started in the background.'});
     }
     // 'return true' is essential to keep the message channel open for the async response.
     return true;
 });
 
+async function detectLanguage(text) {
+    // Set initial state for processing
+    await updateState({isDetecting: true, detectedLanguage: '', status: 'Detecting language...', isError: false});
+
+    try {
+        // Check API availability
+        if (!('LanguageDetector' in self) || (await LanguageDetector.availability()) === 'unavailable') {
+            throw new Error('Language Detector API is not available. It works in Chrome 138+. Please update Chrome.');
+        }
+
+        // Create LanguageDetector and handle model download
+        await updateState({status: 'Initializing language detector...'});
+        const languageDetector = await LanguageDetector.create({
+            monitor(monitor) {
+                monitor.addEventListener("downloadprogress", (e) => {
+                    const progress = (e.loaded * 100).toFixed(0);
+                    updateState({status: `Downloading language detection model: ${progress}%`});
+                });
+            },
+        });
+
+        // Detect language
+        await updateState({status: 'Detecting language...'});
+        const detectionResult = await languageDetector.detect(text);
+        console.log("Detection result:", detectionResult);
+        // Get the language with highest confidence
+        if (detectionResult && detectionResult.length > 0) {
+            // Sort by confidence (highest first)
+            const sortedResults = [...detectionResult].sort((a, b) => b.confidence - a.confidence);
+            const topResult = sortedResults[0];
+
+            await updateState({
+                status: `Language detected: ${topResult.detectedLanguage} (${(topResult.confidence * 100).toFixed(1)}%)`,
+                detectedLanguage: topResult.detectedLanguage,
+                isDetecting: false,
+                isError: false
+            });
+
+            return topResult.detectedLanguage;
+        } else {
+            throw new Error('Could not detect language.');
+        }
+    } catch (error) {
+        console.error("Error in language detection:", error);
+        await updateState({
+            status: `An error occurred during language detection: ${error.message}`,
+            isDetecting: false,
+            isError: true
+        });
+    }
+}
+
+async function translateText(text, targetLanguage) {
+    // Set initial state for processing
+    await updateState({isTranslating: true, translatedText: '', status: 'Initializing translation...', isError: false});
+
+    try {
+        // Check API availability
+        if (!('Translator' in self) || (await Translator.availability({
+            sourceLanguage: 'en',
+            targetLanguage: targetLanguage
+        })) === 'unavailable') {
+            throw new Error('Translator API is not available. It works in Chrome 138+. Please update Chrome.');
+        }
+
+        // Create Translator and handle model download
+        await updateState({status: 'Initializing translator...'});
+        const translator = await Translator.create({
+            sourceLanguage: 'en',  // Auto-detect source language
+            targetLanguage: targetLanguage,
+            monitor(monitor) {
+                monitor.addEventListener("downloadprogress", (e) => {
+                    const progress = (e.loaded * 100).toFixed(0);
+                    updateState({status: `Downloading translation model: ${progress}%`});
+                });
+            },
+        });
+
+        // Translate text and stream updates
+        await updateState({status: 'Translating text...'});
+        const result = await translator.translate(text);
+
+        if (result) {
+            await updateState({
+                status: 'Translation completed successfully!',
+                translatedText: result,
+                isTranslating: false,
+                isError: false
+            });
+        } else {
+            throw new Error('Could not translate text.');
+        }
+    } catch (error) {
+        console.error("Error in translation:", error);
+        await updateState({
+            status: `An error occurred during translation: ${error.message}`,
+            translatedText: 'Failed to translate text. Please try again or check the console.',
+            isTranslating: false,
+            isError: true
+        });
+    }
+}
+
 async function summarize(pageText, settings) {
     // Set initial state for processing.
-    await updateState({isProcessing: true, summary: '', status: 'Initializing...', isError: false});
+    await updateState({isProcessing: true, summary: '', translatedText: '', status: 'Initializing...', isError: false});
 
     try {
         // 1. Check API Availability
