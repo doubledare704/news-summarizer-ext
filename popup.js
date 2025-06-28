@@ -1,9 +1,59 @@
 // popup.js: Handles the logic for the extension popup
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
     const summarizeButton = document.getElementById('summarizeButton');
     const summaryOutput = document.getElementById('summaryOutput');
     const statusMessage = document.getElementById('statusMessage');
     const copySummaryButton = document.getElementById('copySummaryButton');
+    const summaryTypeSelect = document.getElementById('summaryType');
+    const summaryLengthSelect = document.getElementById('summaryLength');
+    const settingsDescription = document.getElementById('settingsDescription');
+
+    // Descriptions for different summary settings to guide the user
+    const settingDescriptions = {
+        'tldr': {
+            'short': 'Short TL;DR: A single sentence summary.',
+            'medium': 'Medium TL;DR: A few sentences for a quick overview.',
+            'long': 'Long TL;DR: A short paragraph summary.'
+        },
+        'teaser': {
+            'short': 'Short Teaser: An engaging snippet to pique interest.',
+            'medium': 'Medium Teaser: Provides more context to draw the reader in.',
+            'long': 'Long Teaser: A more detailed introductory summary.'
+        },
+        'key-points': {
+            'short': 'Short Key Points: A few main bullet points.',
+            'medium': 'Medium Key Points: A list of the most important points.',
+            'long': 'Long Key Points: A comprehensive list of takeaways.'
+        },
+        'headline': {
+            // Headline type is documented as a single sentence, so length may not apply.
+            // We provide one description and disable the length selector for clarity.
+            'short': 'Headline: A concise, single headline for the text.',
+            'medium': 'Headline: A concise, single headline for the text.',
+            'long': 'Headline: A concise, single headline for the text.'
+        }
+    };
+
+    // Function to update the settings UI based on current selections
+    function updateSettingsUI() {
+        const type = summaryTypeSelect.value;
+        const length = summaryLengthSelect.value;
+
+        // The 'headline' type produces a single sentence. Disable length to avoid confusion.
+        if (type === 'headline') {
+            summaryLengthSelect.disabled = true;
+            summaryLengthSelect.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            summaryLengthSelect.disabled = false;
+            summaryLengthSelect.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Update the description text
+        if (settingDescriptions[type] && settingDescriptions[type][length]) {
+            settingsDescription.textContent = settingDescriptions[type][length];
+        }
+    }
 
     // Function to update the status message in the popup
     function updateStatus(message, isError = false) {
@@ -62,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Step 1: Get content from the active tab using a content script
         updateStatus('Getting page content...');
         try {
-            // Execute content.js in the active tab to get its text content
             const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
             if (!tab || !tab.id) {
                 updateStatus('Could not get active tab information.', true);
@@ -70,18 +119,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Inject content.js if it's not already injected (important for pages where it might not run automatically)
-            // This is safer than relying on "matches" in manifest for single-click actions
             await chrome.scripting.executeScript({
                 target: {tabId: tab.id},
                 files: ['content.js']
             });
 
-            // Send a message to the content script to request the text content
             const response = await chrome.tabs.sendMessage(tab.id, {action: 'getPageText'});
             const pageText = response ? response.text : '';
 
-            if (!pageText || pageText.trim().length < 100) { // Require minimum length for summarization
+            if (!pageText || pageText.trim().length < 100) {
                 updateStatus('Not enough content on the page to summarize, or content could not be extracted effectively.', true);
                 summaryOutput.textContent = 'Please navigate to an article or page with substantial text content.';
                 setSummarizeButtonState(true);
@@ -89,44 +135,65 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Step 2: Initialize and use the Summarizer API
-            // Check availability again right before creating, in case status changed
             const currentAvailability = await checkApiAvailability();
-            let summarizer;
-
-            if (currentAvailability === true) {
-                updateStatus('Downloading summarizer model...');
-                summarizer = await Summarizer.create({
-                    type: 'key-points',
-                    length: 'medium',
-                    format: "plain-text",
-                    monitor(monitor) {
-                        monitor.addEventListener("downloadprogress", (e) => {
-                            updateStatus(`Downloading model: ${(e.loaded * 100).toFixed(0)}%`);
-                            console.log(`Downloaded ${Math.floor(e.loaded * 100)}%`);
-                            if (e.loaded * 100 === 100) {
-                                updateStatus('Model download complete. Summarizing...');
-                            }
-                        });
-                    },
-                });
-            } else {
+            if (!currentAvailability) {
                 updateStatus('Summarizer API is not ready or available.', true);
                 setSummarizeButtonState(true);
                 return;
             }
 
+            updateStatus('Initializing summarizer...');
+            const selectedType = summaryTypeSelect.value;
+            const selectedLength = summaryLengthSelect.value;
+
+            const summarizer = await Summarizer.create({
+                type: selectedType,
+                length: selectedLength,
+                format: "plain-text",
+                monitor(monitor) {
+                    monitor.addEventListener("downloadprogress", (e) => {
+                        const progress = (e.loaded * 100).toFixed(0);
+                        updateStatus(`Downloading model: ${progress}%`);
+                        if (progress === "100") {
+                            updateStatus('Model download complete. Summarizing...');
+                        }
+                    });
+                },
+            });
+
             const stream = await summarizer.summarizeStreaming(pageText);
             let summary = "";
+            summaryOutput.textContent = ''; // Clear placeholder text before streaming
+            updateStatus('Generating summary...');
+
+            // For 'key-points', set CSS to respect newlines we'll be adding.
+            if (selectedType === 'key-points') {
+                summaryOutput.style.whiteSpace = 'pre-wrap';
+            } else {
+                summaryOutput.style.whiteSpace = 'normal'; // Reset for other types
+            }
+
             for await (const chunk of stream) {
                 summary += chunk;
-                summaryOutput.textContent += chunk;
-                updateStatus('Summary generating...');
+
+                if (selectedType === 'key-points') {
+                    // To create new lines for bullet points, we replace the asterisk pattern.
+                    // This is run on each chunk to give a "live" formatting effect.
+                    // 1. Replace the very first asterisk (and optional space) with a bullet.
+                    // 2. Replace subsequent " * " patterns with newlines and a bullet.
+                    summaryOutput.textContent = summary
+                        .replace(/^\*\s?/, '• ')
+                        .replace(/\s\*\s/g, '\n\n• ');
+                } else {
+                    // For other summary types, update the text content directly.
+                    summaryOutput.textContent = summary;
+                }
             }
+
             // Step 3: Display the summary
             if (summary) {
-                summaryOutput.textContent = summary;
                 updateStatus('Summary generated successfully!');
-                copySummaryButton.classList.remove('hidden'); // Show copy button
+                copySummaryButton.classList.remove('hidden');
             } else {
                 updateStatus('Could not generate a summary.', true);
                 summaryOutput.textContent = 'No summary was returned. The content might be too complex or short for effective summarization.';
@@ -144,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listener for the Copy Summary button
     copySummaryButton.addEventListener('click', () => {
         const textToCopy = summaryOutput.textContent;
-        // Use document.execCommand('copy') as navigator.clipboard.writeText() might not work in iframes/extensions due to security contexts.
         const textarea = document.createElement('textarea');
         textarea.value = textToCopy;
         document.body.appendChild(textarea);
@@ -157,10 +223,15 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus('Failed to copy summary.', true);
         } finally {
             document.body.removeChild(textarea);
-            setTimeout(() => updateStatus(''), 2000); // Clear message after 2 seconds
+            setTimeout(() => updateStatus(''), 2000);
         }
     });
 
-    // Initial check for API availability when the popup is loaded
+    // Add event listeners for settings changes
+    summaryTypeSelect.addEventListener('change', updateSettingsUI);
+    summaryLengthSelect.addEventListener('change', updateSettingsUI);
+
+    // Initial setup
+    updateSettingsUI();
     checkApiAvailability();
 });

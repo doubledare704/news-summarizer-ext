@@ -25,7 +25,42 @@
     News Summarizer
 </h1>
 
-<div class="flex flex-col items-center space-y-4">
+<div class="flex flex-col items-center space-y-4" style="max-height: 500px;">
+    <!-- Summary Settings -->
+    <div class="w-full bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Summary Settings</h3>
+        
+        <div class="grid grid-cols-2 gap-3">
+            <!-- Type Selection -->
+            <div>
+                <label for="summaryType" class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                <select id="summaryType" 
+                        class="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="tldr">TL;DR</option>
+                    <option value="teaser">Teaser</option>
+                    <option value="key-points" selected>Key Points</option>
+                    <option value="headline">Headline</option>
+                </select>
+            </div>
+
+            <!-- Length Selection -->
+            <div>
+                <label for="summaryLength" class="block text-xs font-medium text-gray-600 mb-1">Length</label>
+                <select id="summaryLength"
+                        class="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="short">Short</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="long">Long</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Description -->
+        <div id="settingsDescription" class="mt-3 text-xs text-gray-500">
+            <!-- This will be updated dynamically by popup.js -->
+        </div>
+    </div>
+
     <button id="summarizeButton"
             class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 w-full">
         Summarize Current Page
@@ -37,6 +72,14 @@
          class="mt-4 p-4 bg-white border border-gray-200 rounded-lg shadow-inner overflow-y-auto max-h-64 text-gray-700 text-sm leading-relaxed w-full">
         <!-- Summary will be displayed here -->
         No summary generated yet. Click "Summarize Current Page" to get started.
+    </div>
+
+    <!-- Settings Toggle for Post-Summary -->
+    <div id="postSummarySettings" class="w-full hidden">
+        <button id="toggleSettingsButton"
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-1 px-3 rounded-md text-sm transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75">
+            Change Settings & Re-summarize
+        </button>
     </div>
 
     <button id="copySummaryButton"
