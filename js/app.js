@@ -16,6 +16,7 @@ class App {
     this.currentTitle = '';
     this.sourceLanguage = 'en';
     this.isWarmingUp = false;
+    this.lastSummarizedUrl = '';
     
     this.init();
   }
@@ -33,9 +34,17 @@ class App {
 
     // Reset UI when tab changes or navigates
     chrome.tabs.onActivated.addListener(() => this.ui.resetUI());
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (changeInfo.status === 'loading' && tab.active) {
         this.ui.resetUI();
+      }
+      
+      if (changeInfo.status === 'complete' && tab.active && tab.url) {
+        const options = this.ui.getOptions();
+        if (options.autoSummarize && tab.url !== this.lastSummarizedUrl && !tab.url.startsWith('chrome://')) {
+          console.log('Auto-summarizing new page:', tab.url);
+          this.handleSummarize();
+        }
       }
     });
 
@@ -48,6 +57,8 @@ class App {
     this.ui.elements.titleLengthSelect.addEventListener('change', saveSettings);
     this.ui.elements.summaryTypeSelect.addEventListener('change', saveSettings);
     this.ui.elements.summaryLengthSelect.addEventListener('change', saveSettings);
+    this.ui.elements.autoSummarizeToggle.addEventListener('change', saveSettings);
+    this.ui.elements.targetLangSelect.addEventListener('change', saveSettings);
 
     // Load persisted settings
     chrome.storage.local.get(['newsSummarizerSettings'], (result) => {
@@ -86,9 +97,10 @@ class App {
     this.currentTitle = '';
 
     try {
-      const { text } = await this.content.getActivePageContent();
+      const { text, url } = await this.content.getActivePageContent();
       if (!text) throw new Error('No content could be extracted from the page.');
       
+      this.lastSummarizedUrl = url;
       const options = this.ui.getOptions();
       
       // Step 1: Detect Language
@@ -150,29 +162,57 @@ class App {
   }
 
   async handleTranslate() {
-    if (!this.currentSummary) return;
+    if (!this.currentSummary && !this.currentTitle) return;
+
+    const options = this.ui.getOptions();
+    const targetLanguage = options.targetLanguage || 'es';
 
     this.ui.elements.translateBtn.disabled = true;
     const originalBtnText = this.ui.elements.translateBtn.querySelector('span').textContent;
     this.ui.elements.translateBtn.querySelector('span').textContent = 'Translating...';
 
     try {
-      const targetLanguage = this.sourceLanguage === 'en' ? 'es' : 'en';
-      const ready = await this.translator.isAvailable('en', targetLanguage);
-      if (!ready) throw new Error(`Translation to ${targetLanguage.toUpperCase()} is not supported.`);
+      const ready = await this.translator.isAvailable(this.sourceLanguage, targetLanguage);
+      if (!ready) throw new Error(`Translation from ${this.sourceLanguage.toUpperCase()} to ${targetLanguage.toUpperCase()} is not supported.`);
 
-      let translatedText = '';
-      await this.translator.translateStreaming(this.currentSummary, 'en', targetLanguage, (chunk) => {
-        if (!chunk) return;
-        translatedText = chunk;
-        this.ui.displaySummary(translatedText);
-      });
+      // Step 1: Translate Title if exists
+      if (this.currentTitle) {
+        this.ui.updateProgress(0, 'Preparing translation...');
+        const translatedTitle = await this.translator.translate(
+          this.currentTitle, 
+          this.sourceLanguage, 
+          targetLanguage,
+          (progress) => this.ui.updateProgress(progress, `Downloading translation model...`)
+        );
+        this.currentTitle = translatedTitle;
+        this.ui.displayTitle(this.currentTitle);
+      }
+
+      // Step 2: Translate Summary
+      if (this.currentSummary) {
+        this.ui.updateProgress(0, 'Translating content...');
+        let translatedSummary = '';
+        await this.translator.translateStreaming(
+          this.currentSummary, 
+          this.sourceLanguage, 
+          targetLanguage, 
+          (chunk) => {
+            if (!chunk) return;
+            translatedSummary = chunk;
+            this.ui.displaySummary(translatedSummary);
+          },
+          (progress) => this.ui.updateProgress(progress, `Downloading translation model...`)
+        );
+        this.currentSummary = translatedSummary;
+      }
       
     } catch (error) {
+      console.error('Translation failed:', error);
       alert(error.message);
     } finally {
       this.ui.elements.translateBtn.disabled = false;
       this.ui.elements.translateBtn.querySelector('span').textContent = originalBtnText;
+      this.ui.updateProgress(100); // Clear progress
     }
   }
 

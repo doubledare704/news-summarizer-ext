@@ -31,6 +31,8 @@ export class SidePanelUI {
       titleLengthSelect: document.getElementById('title-length-select'),
       summaryTypeSelect: document.getElementById('summary-type-select'),
       summaryLengthSelect: document.getElementById('summary-length-select'),
+      autoSummarizeToggle: document.getElementById('auto-summarize-toggle'),
+      targetLangSelect: document.getElementById('target-lang-select'),
       
       copyBtn: document.getElementById('copy-btn'),
       translateBtn: document.getElementById('translate-btn'),
@@ -138,6 +140,8 @@ export class SidePanelUI {
       titleLength: this.elements.titleLengthSelect.value,
       summaryType: this.elements.summaryTypeSelect.value,
       summaryLength: this.elements.summaryLengthSelect.value,
+      autoSummarize: this.elements.autoSummarizeToggle.checked,
+      targetLanguage: this.elements.targetLangSelect.value,
     };
   }
 
@@ -145,6 +149,8 @@ export class SidePanelUI {
     if (options.titleLength) this.elements.titleLengthSelect.value = options.titleLength;
     if (options.summaryType) this.elements.summaryTypeSelect.value = options.summaryType;
     if (options.summaryLength) this.elements.summaryLengthSelect.value = options.summaryLength;
+    if (options.autoSummarize !== undefined) this.elements.autoSummarizeToggle.checked = options.autoSummarize;
+    if (options.targetLanguage) this.elements.targetLangSelect.value = options.targetLanguage;
   }
 
   showError(message) {

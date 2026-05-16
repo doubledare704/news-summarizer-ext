@@ -77,19 +77,42 @@
         </div>
 
         <div class="space-y-8">
-          <!-- Title Settings -->
+          <!-- Automation Settings -->
           <div class="space-y-4">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-lg">🤖</span>
+              <h3 class="font-bold text-slate-800">Automation</h3>
+            </div>
+            <div class="flex items-center justify-between pl-7 py-1">
+              <div class="space-y-0.5">
+                <label class="text-sm font-semibold text-slate-700">Auto Summarize</label>
+                <p class="text-[10px] text-slate-400 leading-tight">Summarize pages automatically on load</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="auto-summarize-toggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Title Settings -->
+          <div class="space-y-4 pt-4 border-t border-slate-100">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-lg">🏷️</span>
               <h3 class="font-bold text-slate-800">Title Generation</h3>
             </div>
             <div class="space-y-1.5 pl-7">
               <label class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Headline Length</label>
-              <select id="title-length-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
-                <option value="short">Short (~12 words)</option>
-                <option value="medium" selected>Medium (~17 words)</option>
-                <option value="long">Long (~22 words)</option>
-              </select>
+              <div class="relative">
+                <select id="title-length-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
+                  <option value="short">Short (~12 words)</option>
+                  <option value="medium" selected>Medium (~17 words)</option>
+                  <option value="long">Long (~22 words)</option>
+                </select>
+                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                  <svg fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -102,20 +125,58 @@
             <div class="space-y-6 pl-7">
               <div class="space-y-1.5">
                 <label class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Preferred Style</label>
-                <select id="summary-type-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
-                  <option value="key-points" selected>Bullet Points</option>
-                  <option value="tldr">TL;DR Paragraph</option>
-                  <option value="teaser">Engaging Teaser</option>
-                </select>
+                <div class="relative">
+                  <select id="summary-type-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
+                    <option value="key-points" selected>Bullet Points</option>
+                    <option value="tldr">TL;DR Paragraph</option>
+                    <option value="teaser">Engaging Teaser</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </div>
               </div>
               <div class="space-y-1.5">
                 <label class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Detail Level</label>
-                <select id="summary-length-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
-                  <option value="short">Brief</option>
-                  <option value="medium" selected>Normal</option>
-                  <option value="long">In-depth</option>
-                </select>
+                <div class="relative">
+                  <select id="summary-length-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
+                    <option value="short">Brief</option>
+                    <option value="medium" selected>Normal</option>
+                    <option value="long">In-depth</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Translation Settings -->
+          <div class="space-y-4 pt-4 border-t border-slate-100">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-lg">🌐</span>
+              <h3 class="font-bold text-slate-800">Translation</h3>
+            </div>
+            <div class="space-y-1.5 pl-7">
+              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Target Language</label>
+              <div class="relative">
+                <select id="target-lang-select" class="w-full h-11 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer">
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="it">Italian</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="uk">Ukrainian</option>
+                  <option value="ja">Japanese</option>
+                  <option value="zh">Chinese</option>
+                  <option value="en">English</option>
+                </select>
+                <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                  <svg fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1 leading-tight">This language will be used when you click the Translate button.</p>
             </div>
           </div>
         </div>
