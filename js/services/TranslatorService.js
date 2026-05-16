@@ -87,11 +87,19 @@ export class TranslatorService {
       const translator = await self.Translator.create(options);
       const stream = translator.translateStreaming(text);
       
+      let fullText = '';
       for await (const chunk of stream) {
-        onChunk(chunk);
+        // Handle both incremental and full-string streaming styles
+        if (chunk.startsWith(fullText)) {
+          fullText = chunk;
+        } else {
+          fullText += chunk;
+        }
+        if (onChunk) onChunk(fullText);
       }
       
       await translator.destroy();
+      return fullText;
     } catch (error) {
       console.error('Streaming translation failed:', error);
       throw error;

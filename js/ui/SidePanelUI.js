@@ -4,12 +4,18 @@
 export class SidePanelUI {
   constructor() {
     this.elements = {
+      appRoot: document.getElementById('app-root'),
       summarizeBtn: document.getElementById('summarize-btn'),
+      regenerateBtn: document.getElementById('regenerate-btn'),
+      copyBtn: document.getElementById('copy-btn'),
+      shareBtn: document.getElementById('share-btn'),
+      translateBtn: document.getElementById('translate-btn'),
       btnText: document.getElementById('btn-text'),
       btnIcon: document.getElementById('btn-icon'),
       loadingSpinner: document.getElementById('loading-spinner'),
       emptyState: document.getElementById('empty-state'),
       summaryContainer: document.getElementById('summary-container'),
+      summaryTitle: document.getElementById('summary-title'),
       summaryContent: document.getElementById('summary-content'),
       thinkingOverlay: document.getElementById('thinking-overlay'),
       thinkingStatus: document.getElementById('thinking-status'),
@@ -17,11 +23,26 @@ export class SidePanelUI {
       progressBar: document.getElementById('download-progress-bar'),
       progressPercentage: document.getElementById('download-percentage'),
       actionBar: document.getElementById('action-bar'),
-      styleSelect: document.getElementById('style-select'),
-      lengthSelect: document.getElementById('length-select'),
+      
+      // Settings Elements
+      settingsBtn: document.getElementById('settings-btn'),
+      settingsPanel: document.getElementById('settings-panel'),
+      closeSettingsBtn: document.getElementById('close-settings-btn'),
+      titleLengthSelect: document.getElementById('title-length-select'),
+      summaryTypeSelect: document.getElementById('summary-type-select'),
+      summaryLengthSelect: document.getElementById('summary-length-select'),
+      
       copyBtn: document.getElementById('copy-btn'),
       translateBtn: document.getElementById('translate-btn'),
     };
+  }
+
+  toggleSettings(show) {
+    if (show) {
+      this.elements.settingsPanel.classList.remove('hidden');
+    } else {
+      this.elements.settingsPanel.classList.add('hidden');
+    }
   }
 
   updateProgress(percentage, status = 'Downloading AI model...') {
@@ -39,11 +60,19 @@ export class SidePanelUI {
     }
   }
 
-  setLoading(isLoading, status = 'Analyzing Page...') {
+  resetUI() {
+    this.clearContent();
+    this.setLoading(false);
+    this.elements.emptyState.classList.remove('hidden');
+    this.elements.summaryContainer.classList.add('hidden');
+    this.elements.actionBar.classList.add('hidden');
+  }
+
+  setLoading(isLoading, status = 'Synthesizing...') {
     this.isLoading = isLoading;
     if (isLoading) {
       this.elements.summarizeBtn.disabled = true;
-      this.elements.btnText.textContent = 'Thinking...';
+      this.elements.btnText.textContent = 'Summarizing...';
       this.elements.btnIcon.classList.add('hidden');
       this.elements.loadingSpinner.classList.remove('hidden');
       this.elements.thinkingOverlay.classList.remove('hidden');
@@ -54,15 +83,26 @@ export class SidePanelUI {
       this.elements.summaryContainer.classList.remove('hidden');
     } else {
       this.elements.summarizeBtn.disabled = false;
-      this.elements.btnText.textContent = 'Generate Summary';
+      this.elements.btnText.textContent = 'Summarize Now';
       this.elements.btnIcon.classList.remove('hidden');
       this.elements.loadingSpinner.classList.add('hidden');
       this.elements.thinkingOverlay.classList.add('hidden');
     }
   }
 
+  clearContent() {
+    this.elements.summaryTitle.textContent = '';
+    this.elements.summaryContent.innerHTML = '';
+  }
+
+  displayTitle(text) {
+    this.elements.summaryTitle.textContent = text;
+    this.elements.thinkingOverlay.classList.add('hidden');
+    this.elements.summaryContainer.classList.remove('hidden');
+    this.elements.emptyState.classList.add('hidden');
+  }
+
   displaySummary(text) {
-    // Hide overlay as soon as we have any response from the AI
     this.elements.thinkingOverlay.classList.add('hidden');
 
     if (!text) {
@@ -85,7 +125,6 @@ export class SidePanelUI {
       })
       .join('');
 
-    // Wrap in UL if we detected list items and no other paragraphs
     this.elements.summaryContent.innerHTML = hasList && !html.includes('<p>') ? `<ul class="space-y-1">${html}</ul>` : html;
     
     this.elements.summaryContainer.classList.remove('hidden');
@@ -96,9 +135,16 @@ export class SidePanelUI {
 
   getOptions() {
     return {
-      type: this.elements.styleSelect.value,
-      length: this.elements.lengthSelect.value,
+      titleLength: this.elements.titleLengthSelect.value,
+      summaryType: this.elements.summaryTypeSelect.value,
+      summaryLength: this.elements.summaryLengthSelect.value,
     };
+  }
+
+  setOptions(options) {
+    if (options.titleLength) this.elements.titleLengthSelect.value = options.titleLength;
+    if (options.summaryType) this.elements.summaryTypeSelect.value = options.summaryType;
+    if (options.summaryLength) this.elements.summaryLengthSelect.value = options.summaryLength;
   }
 
   showError(message) {

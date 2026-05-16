@@ -141,9 +141,17 @@ export class SummarizerService {
 
     try {
       const stream = this.session.summarizeStreaming(text, options);
+      let fullText = '';
       for await (const chunk of stream) {
-        onChunk(chunk);
+        // Handle both incremental and full-string streaming styles
+        if (chunk.startsWith(fullText)) {
+          fullText = chunk;
+        } else {
+          fullText += chunk;
+        }
+        if (onChunk) onChunk(fullText);
       }
+      return fullText;
     } catch (error) {
       console.error('Streaming summarization failed:', error);
       throw error;

@@ -13,6 +13,7 @@ class App {
     this.ui = new SidePanelUI();
     
     this.currentSummary = '';
+    this.currentTitle = '';
     this.sourceLanguage = 'en';
     this.isWarmingUp = false;
     
@@ -20,9 +21,40 @@ class App {
   }
 
   async init() {
+    // Basic Button listeners
     this.ui.elements.summarizeBtn.addEventListener('click', () => this.handleSummarize());
     this.ui.elements.copyBtn.addEventListener('click', () => this.handleCopy());
     this.ui.elements.translateBtn.addEventListener('click', () => this.handleTranslate());
+    this.ui.elements.regenerateBtn.addEventListener('click', () => this.handleSummarize());
+
+    // Settings Toggle listeners
+    this.ui.elements.settingsBtn.addEventListener('click', () => this.ui.toggleSettings(true));
+    this.ui.elements.closeSettingsBtn.addEventListener('click', () => this.ui.toggleSettings(false));
+
+    // Reset UI when tab changes or navigates
+    chrome.tabs.onActivated.addListener(() => this.ui.resetUI());
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+      if (changeInfo.status === 'loading' && tab.active) {
+        this.ui.resetUI();
+      }
+    });
+
+    // Settings Change Persistence
+    const saveSettings = () => {
+      const options = this.ui.getOptions();
+      chrome.storage.local.set({ newsSummarizerSettings: options });
+    };
+
+    this.ui.elements.titleLengthSelect.addEventListener('change', saveSettings);
+    this.ui.elements.summaryTypeSelect.addEventListener('change', saveSettings);
+    this.ui.elements.summaryLengthSelect.addEventListener('change', saveSettings);
+
+    // Load persisted settings
+    chrome.storage.local.get(['newsSummarizerSettings'], (result) => {
+      if (result.newsSummarizerSettings) {
+        this.ui.setOptions(result.newsSummarizerSettings);
+      }
+    });
 
     // Start warming up models in the background
     this.warmUpModels();
@@ -48,81 +80,63 @@ class App {
   async handleSummarize() {
     if (this.ui.isLoading) return; // Prevent double clicks
     
+    this.ui.clearContent();
     this.ui.setLoading(true, 'Extracting content...');
     this.currentSummary = '';
-    this.ui.elements.summaryContent.innerHTML = '';
+    this.currentTitle = '';
 
     try {
-      console.log('[DEBUG] Step 1: Getting content');
       const { text } = await this.content.getActivePageContent();
       if (!text) throw new Error('No content could be extracted from the page.');
       
-      console.log('[DEBUG] Step 2: Detecting language');
-      const availability = await this.detector.getAvailability();
+      const options = this.ui.getOptions();
       
+      // Step 1: Detect Language
+      const availability = await this.detector.getAvailability();
       let detectedLang = 'en';
       if (availability !== 'unavailable') {
-        if (availability === 'downloadable') {
-          this.ui.updateProgress(0, 'Downloading language models (this may take a minute)...');
-        } else {
-          this.ui.updateProgress(0, 'Identifying page language...');
-        }
-
-        console.log('[DEBUG] Step 2.1: Init detector');
+        this.ui.updateProgress(0, 'Identifying page language...');
         await this.detector.init((progress) => {
           this.ui.updateProgress(progress, 'Downloading language models...');
         });
-
-        console.log('[DEBUG] Step 2.2: Detect text');
         detectedLang = await this.detector.detect(text.substring(0, 1000));
         console.log('Detected language:', detectedLang);
-      } else {
-        console.log('Language detector unavailable. Defaulting to English.');
       }
+      this.sourceLanguage = detectedLang;
       
-      console.log('[DEBUG] Step 3: Setup Summarizer session');
-      const summarizerAvailability = await this.summarizer.getAvailability();
-      
-      if (summarizerAvailability === 'unavailable') {
-        throw new Error('Summarizer AI is not available or supported on your device.');
-      }
-      
-      if (this.sourceLanguage !== detectedLang || !this.summarizer.session) {
-        this.sourceLanguage = detectedLang;
-        
-        const statusMsg = summarizerAvailability === 'downloadable' 
-          ? 'Downloading AI summarization model...' 
-          : `Optimizing AI for ${detectedLang.toUpperCase()}...`;
-          
-        this.ui.updateProgress(0, statusMsg);
-        
-        const options = {
-          ...this.ui.getOptions(),
-          expectedInputLanguages: [detectedLang]
-        };
+      // Step 2: Generate Title (Headline)
+      this.ui.updateProgress(100, 'Generating catchy title...');
+      await this.summarizer.createSession({
+        type: 'headline',
+        length: options.titleLength,
+        expectedInputLanguages: [detectedLang]
+      }, (progress) => {
+        this.ui.updateProgress(progress, 'Downloading AI models...');
+      });
 
-        console.log('[DEBUG] Step 3.1: Create summarizer session');
-        await this.summarizer.createSession(options, (progress) => {
-          this.ui.updateProgress(progress, 'Downloading summarization model...');
-        });
-      }
+      this.currentTitle = await this.summarizer.summarize(text);
+      this.ui.displayTitle(this.currentTitle);
+
+      // Step 3: Generate Summary Body
+      this.ui.setLoading(true, 'Synthesizing key points...'); // Show overlay again for body gen
+      this.ui.updateProgress(100, 'Generating summary body...');
       
-      console.log('[DEBUG] Step 4: Summarize streaming');
-      this.ui.updateProgress(100, 'Generating summary...');
-      console.log('Starting summarization streaming...');
-      
+      await this.summarizer.createSession({
+        type: options.summaryType,
+        length: options.summaryLength,
+        expectedInputLanguages: [detectedLang]
+      });
+
       let hasReceivedChunk = false;
       await this.summarizer.summarizeStreaming(text, {}, (chunk) => {
-        if (!hasReceivedChunk) {
-          this.ui.setLoading(false); // Hide the progress bar once streaming starts
-          hasReceivedChunk = true;
-        }
+        if (!chunk) return;
+        if (!hasReceivedChunk) hasReceivedChunk = true;
         this.currentSummary = chunk;
         this.ui.displaySummary(this.currentSummary);
       });
       
       if (!hasReceivedChunk) {
-        throw new Error('AI returned an empty summary. This might happen if the content is too short or blocked.');
+        throw new Error('AI returned an empty summary.');
       }
 
       console.log('Summarization complete.');
@@ -144,12 +158,12 @@ class App {
 
     try {
       const targetLanguage = this.sourceLanguage === 'en' ? 'es' : 'en';
-      
       const ready = await this.translator.isAvailable('en', targetLanguage);
-      if (!ready) throw new Error(`Translation from English to ${targetLanguage} is not supported.`);
+      if (!ready) throw new Error(`Translation to ${targetLanguage.toUpperCase()} is not supported.`);
 
       let translatedText = '';
       await this.translator.translateStreaming(this.currentSummary, 'en', targetLanguage, (chunk) => {
+        if (!chunk) return;
         translatedText = chunk;
         this.ui.displaySummary(translatedText);
       });
@@ -163,8 +177,9 @@ class App {
   }
 
   handleCopy() {
-    if (this.currentSummary) {
-      navigator.clipboard.writeText(this.currentSummary);
+    const textToCopy = `${this.currentTitle}\n\n${this.currentSummary}`;
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
       const originalText = this.ui.elements.copyBtn.querySelector('span').textContent;
       this.ui.elements.copyBtn.querySelector('span').textContent = 'Copied!';
       setTimeout(() => {
@@ -174,7 +189,6 @@ class App {
   }
 }
 
-// Initialize the app when the DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   new App();
 });
