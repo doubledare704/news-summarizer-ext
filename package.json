@@ -1,6 +1,20 @@
 {
+  "name": "news-summarizer-ext",
+  "version": "1.0.0",
+  "description": "Chrome extension for summarizing news articles using built-in AI APIs.",
+  "scripts": {
+    "dev": "concurrently \"npm run watch:css\" \"extension dev --browser=chrome\"",
+    "build": "npm run build:css && extension build",
+    "preview": "extension preview",
+    "watch:css": "tailwindcss -i ./input.css -o ./output.css --watch",
+    "build:css": "tailwindcss -i ./input.css -o ./output.css --minify"
+  },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.11",
     "tailwindcss": "^4.1.11"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "extension": "latest"
   }
 }
