@@ -67,8 +67,12 @@ class App {
       }
     });
 
-    // Start warming up models in the background
-    this.warmUpModels();
+    // Start warming up models in the background on first interaction
+    document.body.addEventListener('click', () => {
+      if (!this.isWarmingUp) {
+        this.warmUpModels();
+      }
+    }, { once: true });
   }
 
   async warmUpModels() {
@@ -118,34 +122,37 @@ class App {
       
       // Step 2: Generate Title (Headline)
       this.ui.updateProgress(100, 'Generating catchy title...');
-      await this.summarizer.createSession({
-        type: 'headline',
-        length: options.titleLength,
-        expectedInputLanguages: [detectedLang]
-      }, (progress) => {
-        this.ui.updateProgress(progress, 'Downloading AI models...');
-      });
-
-      this.currentTitle = await this.summarizer.summarize(text);
+      this.currentTitle = await this.summarizer.summarize(
+        text,
+        {
+          type: 'headline',
+          length: options.titleLength,
+          expectedInputLanguages: [detectedLang]
+        },
+        (progress) => this.ui.updateProgress(progress, 'Downloading AI models...')
+      );
       this.ui.displayTitle(this.currentTitle);
 
       // Step 3: Generate Summary Body
       this.ui.setLoading(true, 'Synthesizing key points...'); // Show overlay again for body gen
       this.ui.updateProgress(100, 'Generating summary body...');
       
-      await this.summarizer.createSession({
-        type: options.summaryType,
-        length: options.summaryLength,
-        expectedInputLanguages: [detectedLang]
-      });
-
       let hasReceivedChunk = false;
-      await this.summarizer.summarizeStreaming(text, {}, (chunk) => {
-        if (!chunk) return;
-        if (!hasReceivedChunk) hasReceivedChunk = true;
-        this.currentSummary = chunk;
-        this.ui.displaySummary(this.currentSummary);
-      });
+      await this.summarizer.summarizeStreaming(
+        text,
+        {
+          type: options.summaryType,
+          length: options.summaryLength,
+          expectedInputLanguages: [detectedLang]
+        },
+        (chunk) => {
+          if (!chunk) return;
+          if (!hasReceivedChunk) hasReceivedChunk = true;
+          this.currentSummary = chunk;
+          this.ui.displaySummary(this.currentSummary);
+        },
+        (progress) => this.ui.updateProgress(progress, 'Downloading AI models...')
+      );
       
       if (!hasReceivedChunk) {
         throw new Error('AI returned an empty summary.');

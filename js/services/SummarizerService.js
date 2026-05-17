@@ -4,7 +4,7 @@
  */
 export class SummarizerService {
   constructor() {
-    this.session = null;
+    this.sessions = new Map();
   }
 
   /**
@@ -48,7 +48,7 @@ export class SummarizerService {
         return;
       }
       try {
-        await this.createSession();
+        await this.getOrCreateSession();
       } catch (e) {
         console.warn('Summarizer warm-up failed:', e?.message || e);
       }
@@ -56,12 +56,12 @@ export class SummarizerService {
   }
 
   /**
-   * Creates a summarizer session with specified options.
+   * Gets a cached session or creates a new one with specified options.
    * @param {Object} options - SummarizerOptions.
    * @param {Function} onProgress - Callback for download progress.
    */
-  async createSession(options = {}, onProgress = null) {
-    const Summarizer = self.Summarizer || (window.ai && window.ai.summarizer);
+  async getOrCreateSession(options = {}, onProgress = null) {
+    const Summarizer = self.Summarizer;
     if (!Summarizer) {
       throw new Error('Summarizer API not supported in this browser.');
     }
@@ -74,33 +74,30 @@ export class SummarizerService {
       outputLanguage: 'en',
     };
 
-    if (this.session) {
-      try {
-        this.session.destroy();
-      } catch (e) { }
-      this.session = null;
+    const createOptions = { ...defaults, ...options };
+    if (createOptions.type === 'tl;dr') createOptions.type = 'tldr';
+
+    const sessionKey = JSON.stringify(createOptions);
+
+    if (this.sessions.has(sessionKey)) {
+      return this.sessions.get(sessionKey);
     }
 
+    if (onProgress) {
+      createOptions.monitor = (m) => {
+        m.addEventListener('downloadprogress', (e) => {
+          console.log(`[DEBUG] Summarizer download: ${e.loaded} / ${e.total}`);
+          const percentage = e.total ? (e.loaded / e.total) * 100 : 0;
+          onProgress(percentage);
+        });
+      };
+    }
+
+    console.log('Summarizer: Calling .create() with:', createOptions);
     try {
-      console.log('Summarizer: options:', options);
-      const createOptions = { ...defaults, ...options };
-
-      // Map 'tl;dr' to 'tldr' if needed (docs say 'tldr')
-      if (createOptions.type === 'tl;dr') createOptions.type = 'tldr';
-
-      if (onProgress) {
-        createOptions.monitor = (m) => {
-          m.addEventListener('downloadprogress', (e) => {
-            console.log(`[DEBUG] Summarizer download: ${e.loaded} / ${e.total}`);
-            const percentage = e.total ? (e.loaded / e.total) * 100 : 0;
-            onProgress(percentage);
-          });
-        };
-      }
-
-      console.log('Summarizer: Calling .create() with:', createOptions);
-      this.session = await Summarizer.create(createOptions);
-      return this.session;
+      const session = await Summarizer.create(createOptions);
+      this.sessions.set(sessionKey, session);
+      return session;
     } catch (error) {
       const errorMsg = error?.message || 'Unknown error during summarizer creation';
       console.error('Summarizer: Failed to create session:', errorMsg);
@@ -111,17 +108,14 @@ export class SummarizerService {
   /**
    * Summarizes the given text.
    * @param {string} text - The text to summarize.
-   * @param {Object} options - Optional context for this specific summarization.
+   * @param {Object} options - Options for the summarizer session.
+   * @param {Function} onProgress - Callback for download progress.
    * @returns {Promise<string>}
    */
-  async summarize(text, options = {}) {
-    if (!this.session) {
-      await this.createSession();
-    }
-
+  async summarize(text, options = {}, onProgress = null) {
+    const session = await this.getOrCreateSession(options, onProgress);
     try {
-      // Docs: summarize(text, { context })
-      return await this.session.summarize(text, options);
+      return await session.summarize(text);
     } catch (error) {
       console.error('Summarization failed:', error);
       throw error;
@@ -131,19 +125,16 @@ export class SummarizerService {
   /**
    * Summarizes the given text and streams the results.
    * @param {string} text - The text to summarize.
-   * @param {Object} options - Optional context for this specific summarization.
+   * @param {Object} options - Options for the summarizer session.
    * @param {Function} onChunk - Callback for each text chunk.
+   * @param {Function} onProgress - Callback for download progress.
    */
-  async summarizeStreaming(text, options = {}, onChunk) {
-    if (!this.session) {
-      await this.createSession();
-    }
-
+  async summarizeStreaming(text, options = {}, onChunk, onProgress = null) {
+    const session = await this.getOrCreateSession(options, onProgress);
     try {
-      const stream = this.session.summarizeStreaming(text, options);
+      const stream = session.summarizeStreaming(text);
       let fullText = '';
       for await (const chunk of stream) {
-        // Handle both incremental and full-string streaming styles
         if (chunk.startsWith(fullText)) {
           fullText = chunk;
         } else {
@@ -159,9 +150,11 @@ export class SummarizerService {
   }
 
   destroy() {
-    if (this.session) {
-      this.session.destroy();
-      this.session = null;
+    for (const session of this.sessions.values()) {
+      try {
+        session.destroy();
+      } catch (e) { }
     }
+    this.sessions.clear();
   }
 }
