@@ -1,8 +1,8 @@
-import { SummarizerService } from './services/SummarizerService.js';
-import { TranslatorService } from './services/TranslatorService.js';
-import { LanguageDetectorService } from './services/LanguageDetectorService.js';
-import { ContentService } from './services/ContentService.js';
-import { SidePanelUI } from './ui/SidePanelUI.js';
+import {SummarizerService} from './services/SummarizerService.js';
+import {TranslatorService} from './services/TranslatorService.js';
+import {LanguageDetectorService} from './services/LanguageDetectorService.js';
+import {ContentService} from './services/ContentService.js';
+import {SidePanelUI} from './ui/SidePanelUI.js';
 
 class App {
   constructor() {
@@ -43,7 +43,7 @@ class App {
         const options = this.ui.getOptions();
         if (options.autoSummarize && tab.url !== this.lastSummarizedUrl && !tab.url.startsWith('chrome://')) {
           console.log('Auto-summarizing new page:', tab.url);
-          this.handleSummarize();
+          await this.handleSummarize();
         }
       }
     });
@@ -185,13 +185,12 @@ class App {
       // Step 1: Translate Title if exists
       if (this.currentTitle) {
         this.ui.updateProgress(0, 'Preparing translation...');
-        const translatedTitle = await this.translator.translate(
-          this.currentTitle, 
-          this.sourceLanguage, 
-          targetLanguage,
-          (progress) => this.ui.updateProgress(progress, `Downloading translation model...`)
+        this.currentTitle = await this.translator.translate(
+            this.currentTitle,
+            this.sourceLanguage,
+            targetLanguage,
+            (progress) => this.ui.updateProgress(progress, `Downloading translation model...`)
         );
-        this.currentTitle = translatedTitle;
         this.ui.displayTitle(this.currentTitle);
       }
 

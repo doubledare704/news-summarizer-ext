@@ -33,9 +33,6 @@ export class SidePanelUI {
       summaryLengthSelect: document.getElementById('summary-length-select'),
       autoSummarizeToggle: document.getElementById('auto-summarize-toggle'),
       targetLangSelect: document.getElementById('target-lang-select'),
-      
-      copyBtn: document.getElementById('copy-btn'),
-      translateBtn: document.getElementById('translate-btn'),
     };
   }
 
