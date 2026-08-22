@@ -1,66 +1,48 @@
-# 📰 News Summarizer & Translator Extension
+# 📰 News Summarizer & Translator Extension (v3.0)
 
-A powerful Chrome extension that uses AI to summarize web articles and leverages the browser's built-in translation 
-engine to translate the summary.
+A modern Chrome extension that leverages built-in on-device AI for summarization and translation, now featuring a sleek side panel interface.
 
 ## ✨ Features
 
--   **One-Click Summarization**: Instantly get a concise summary of any article.
--   **Intelligent Text Extraction**: Automatically finds and uses the main content of an article. You can also 
-- summarize just the text you've selected.
--   **Seamless Translation**: After summarizing, a "Translate" button appears, allowing you to translate the English
-- summary back into the article's original language (e.g., Spanish, German, Japanese).
-
----
+-   **Side Panel Interface**: Seamlessly integrated into the Chrome side panel, allowing you to browse and summarize simultaneously.
+-   **On-Device AI Summarization**: Uses the built-in `window.ai.summarizer` API for fast, private, and secure summarization without external API calls.
+-   **Built-in Translation**: Leverages the `window.ai.translator` API to translate summaries instantly.
+-   **Modern Design**: Built with a "Glacier Light" aesthetic using Tailwind CSS and glassmorphic effects.
+-   **Flexible Options**: Choose summary styles (Bullet Points, Paragraph, Key Takeaways) and lengths (Brief, Medium, Detailed).
+-   **Smart Extraction**: Automatically detects main article content or uses your current text selection.
 
 ## 🚀 Installation
 
-Since this is a local development extension, you can install it by following these steps:
-
-1.  **Download the Code**: Clone or download this repository to your local machine.
-2.  **Open Chrome Extensions**: In Chrome, navigate to `chrome://extensions`.
-3.  **Enable Developer Mode**: In the top-right corner, toggle on **"Developer mode"**.
-4.  **Load the Extension**:
-    -   Click the **"Load unpacked"** button.
-    -   In the file dialog, navigate to and select the root folder of this project.
-5.  The extension icon should now appear in your Chrome toolbar. Pin it for easy access!
+1.  **Prerequisites**:
+    -   Requires Chrome 131 or later.
+    -   Ensure "AI on Chrome" flags are enabled (visit `chrome://flags/#summarizer-api-for-gemini-nano` and `chrome://flags/#translator-api-for-gemini-nano`).
+2.  **Download the Code**: Clone or download this repository.
+3.  **Open Chrome Extensions**: Navigate to `chrome://extensions`.
+4.  **Enable Developer Mode**: Toggle it on in the top-right corner.
+5.  **Load the Extension**: Click **"Load unpacked"** and select the root folder of this project.
 
 ## 📖 How to Use
 
-1.  Navigate to a news article or any web page with a significant amount of text.
-2.  Click the **News Summarizer** icon in your browser's toolbar.
-3.  Click the **"Summarize Page"** button.
-    -   The extension will analyze the page, extract the main text, and generate a summary.
-    -   The summary will appear in the popup.
-4.  **To Translate**:
-    -   If the article's language is not English, a button like "Translate to `es`" will appear.
-    -   Click this button to see the summary translated into the article's original language.
+1.  Click the **News Summarizer** icon in your toolbar to open the **Side Panel**.
+2.  Navigate to any news article.
+3.  Select your desired **Style** and **Length**.
+4.  Click **"Generate Summary"**.
+5.  Use the action bar at the bottom to **Copy**, **Share**, or **Translate** the summary.
 
-## 🛠️ How It Works & Technical Details
+## 🛠️ Technical Architecture (SOLID)
 
-This extension is built using modern Manifest V3 standards for better security and performance. Here’s a brief overview 
-of the architecture and key APIs:
+The extension has been refactored for clarity and extensibility:
 
--   **`manifest.json`**: The core configuration file. It defines permissions (`scripting`, `i18n`), the service worker,
-- and UI components.
--   **`popup.html` / `popup.js`**: The UI and main controller for the extension. The `popup.js` script orchestrates the
-- entire process, handling user clicks and managing communication between the other scripts.
--   **`content.js`**: This script is programmatically injected into the active web page using 
-- `chrome.scripting.executeScript()`. Its job is to extract the article's text content and determine its language
-- using the `chrome.i18n.detectLanguage()` API.
--   **`background.js`**: The service worker. It receives text from the popup and performs the summarization.
-    -   **Note**: This implementation uses a placeholder/mock summarization function. It can be extended to integrate
-    - with a real AI summarization API (e.g., OpenAI, Gemini).
--   **`navigator.language.translate()`**: An **experimental API** that provides access to the browser's built-in 
-- translation engine. This allows for seamless, on-device text translation without needing external API keys or services.
+-   **`js/services/`**:
+    -   `SummarizerService.js`: Encapsulates `window.ai.summarizer` logic.
+    -   `TranslatorService.js`: Encapsulates `window.ai.translator` logic.
+    -   `ContentService.js`: Manages content extraction and script injection.
+-   **`js/ui/`**:
+    -   `SidePanelUI.js`: Pure UI management, handling DOM state and styling.
+-   **`js/app.js`**: Orchestrates services and UI interactions.
+-   **`background.js`**: Manages side panel behavior and installation lifecycle.
+-   **`manifest.json`**: Updated to MV3 with `sidePanel` and AI API permissions.
 
-### Data Flow:
+## 🔒 Privacy
 
-1.  User clicks **"Summarize Page"** in the popup.
-2.  `popup.js` executes `content.js` on the current tab.
-3.  `content.js` grabs the page text, detects its language, and sends this data back to `popup.js`.
-4.  `popup.js` sends the extracted text to `background.js`.
-5.  `background.js` runs its summarization logic and returns the summary to `popup.js`.
-6.  `popup.js` displays the summary. If the original language was not English, it also shows the "Translate" button.
-7.  If the user clicks "Translate", `popup.js` calls `navigator.language.translate()` to get the translation and 
-8. updates the UI.
+All processing happens locally on your device using Chrome's built-in AI models. Your data never leaves your browser.

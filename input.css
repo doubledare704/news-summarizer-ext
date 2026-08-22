@@ -1,13 +1,33 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #006194;
+  --color-primary-container: #007bb9;
+  --color-glacier-50: #f7f9fb;
+  --color-glacier-100: #eceef0;
+  --color-glacier-200: #e0e3e5;
+  
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  
+  --animate-shimmer: shimmer 2s infinite linear;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
 body {
-    width: 500px; /* Fixed width for the extension popup */
-    min-height: 200px;
-    font-family: 'Inter', sans-serif;
+    width: 100%;
+    min-height: 100vh;
+    font-family: var(--font-sans);
     display: flex;
     flex-direction: column;
-    padding: 1rem;
-    background-color: #f8fafc; /* light blue-gray */
+    padding: 0;
+    margin: 0;
+    background-color: var(--color-glacier-50);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }

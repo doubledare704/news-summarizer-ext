@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "News Summarizer",
-  "version": "2.0",
-  "description": "Summarizes and translates web page articles.",
+  "version": "3.0",
+  "description": "AI-powered news summarization and translation in a side panel.",
   "permissions": [
-    "tabs",
+    "sidePanel",
     "activeTab",
     "scripting",
-    "clipboardWrite",
     "storage"
   ],
   "host_permissions": [
@@ -15,22 +14,28 @@
     "https://*/*"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
+    "default_title": "Open News Summarizer"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self';"
-  },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ]
 }
