@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "News Summarizer",
+  "name": "Briefly Local",
   "version": "3.0",
   "description": "AI-powered news summarization and translation in a side panel.",
   "permissions": [
@@ -14,7 +14,7 @@
     "https://*/*"
   ],
   "action": {
-    "default_title": "Open News Summarizer"
+    "default_title": "Open Briefly Local"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

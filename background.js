@@ -1,5 +1,5 @@
 /**
- * Background script for News Summarizer.
+ * Background script for Briefly Local.
  * Handles side panel configuration and opening.
  */
 

@@ -1,4 +1,4 @@
-# 📰 News Summarizer & Translator Extension (v3.0)
+# 📰 Briefly Local (v3.0)
 
 A modern Chrome extension that leverages built-in on-device AI for summarization and translation, now featuring a sleek side panel interface.
 
@@ -23,7 +23,7 @@ A modern Chrome extension that leverages built-in on-device AI for summarization
 
 ## 📖 How to Use
 
-1.  Click the **News Summarizer** icon in your toolbar to open the **Side Panel**.
+1.  Click the **Briefly Local** icon in your toolbar to open the **Side Panel**.
 2.  Navigate to any news article.
 3.  Select your desired **Style** and **Length**.
 4.  Click **"Generate Summary"**.

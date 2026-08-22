@@ -1,5 +1,5 @@
 {
-  "name": "news-summarizer-ext",
+  "name": "briefly-local",
   "version": "1.0.0",
   "description": "Chrome extension for summarizing news articles using built-in AI APIs.",
   "scripts": {
