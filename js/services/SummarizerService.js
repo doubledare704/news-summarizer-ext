@@ -77,6 +77,16 @@ export class SummarizerService {
     const createOptions = { ...defaults, ...options };
     if (createOptions.type === 'tl;dr') createOptions.type = 'tldr';
 
+    const SUPPORTED_LANGUAGES = new Set(['de', 'en', 'es', 'fr', 'ja']);
+    if (createOptions.expectedInputLanguages) {
+      createOptions.expectedInputLanguages = createOptions.expectedInputLanguages.map(
+        lang => SUPPORTED_LANGUAGES.has(lang) ? lang : 'en'
+      );
+    }
+    if (createOptions.outputLanguage && !SUPPORTED_LANGUAGES.has(createOptions.outputLanguage)) {
+      createOptions.outputLanguage = 'en';
+    }
+
     const sessionKey = JSON.stringify(createOptions);
 
     if (this.sessions.has(sessionKey)) {
